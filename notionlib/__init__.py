@@ -15,6 +15,8 @@ docstring for a function, use ``notionlib.get_version?<ENTER>`` (to view the
 docstring) and ``notionlib.get_version??<ENTER>`` (to view the source code).
 """
 
+import notionlib.notion
+
 # PEP0440 compatible formatted version, see:
 # https://www.python.org/dev/peps/pep-0440/
 #
