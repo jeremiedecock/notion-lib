@@ -1,8 +1,8 @@
-====
-TODO_PROJECT_NAME
-====
+===========================
+Python Client for Notion.so
+===========================
 
-TODO_PROJECT_SHORT_DESC
+An unofficial Python 3 client for Notion.so API
 
 Note:
 
@@ -17,11 +17,11 @@ Contents:
    API <api>
    developer
 
-* Web site: TODO_PROJECT_WEB_SITE_URL
-* Online documentation: TODO_PROJECT_ONLINE_DOCUMENTATION_URL
-* Source code: TODO_PROJECT_GITHUB_URL
-* Issue tracker: TODO_PROJECT_ISSUE_TRACKER_URL
-* TODO_PYTHON_PACKAGE_NAME on PyPI: TODO_PROJECT_PYPI_URL
+* Web site: http://www.jdhp.org/software_en.html#notionlib
+* Online documentation: http://notionlib.readthedocs.org
+* Source code: https://github.com/jdhp/notion-lib
+* Issue tracker: https://github.com/jdhp/notion-lib/issues
+* notionlib on PyPI: https://pypi.org/project/notionlib
 
 Indices and tables
 ==================
