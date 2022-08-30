@@ -344,6 +344,18 @@ class Notion:
             # https://developers.notion.com/reference/property-item-object#url-property-values
             value =  property_dict["url"]
 
+        elif property_dict["type"] == "last_edited_time":
+            # https://developers.notion.com/reference/property-item-object#url-property-values
+            value = self.parse_notion_datetime_str(property_dict["last_edited_time"])
+
+        elif property_dict["type"] == "created_by":
+            # https://developers.notion.com/reference/property-item-object#created-by-property-values
+            value = property_dict["created_by"]["id"]
+            #if "person" in property_dict["created_by"]:
+            #    value = property_dict["created_by"]["person"]["email"]    # TODO : use ID instead !!!
+            #else:
+            #    value = None
+
         else:
             raise Exception(f'Unknown property type "{property_dict["type"]}"')
 
