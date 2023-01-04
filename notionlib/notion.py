@@ -356,6 +356,14 @@ class Notion:
             #else:
             #    value = None
 
+        elif property_dict["type"] == "created_time":
+            # https://developers.notion.com/reference/property-item-object#created-by-property-values
+            value = self.parse_notion_datetime_str(property_dict["created_time"])
+            #if "person" in property_dict["created_by"]:
+            #    value = property_dict["created_by"]["person"]["email"]    # TODO : use ID instead !!!
+            #else:
+            #    value = None
+
         else:
             raise Exception(f'Unknown property type "{property_dict["type"]}"')
 
@@ -505,7 +513,13 @@ class Notion:
 
         elif type == "people":
             # https://developers.notion.com/reference/property-value-object#people-property-values
-            raise NotImplementedError()  # TODO !!!
+            self.check_value_type(value, (str, list, tuple))
+            if isinstance(value, str):
+                property_dict["people"] = [{"id": value}]
+            elif isinstance(value, list, tuple):
+                property_dict["people"] = []
+                for page_id in value:
+                    property_dict["relation"].append({"id": page_id})
 
         elif type == "files":
             # https://developers.notion.com/reference/property-value-object#files-property-values
