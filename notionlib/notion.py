@@ -16,8 +16,8 @@ class Notion:
 
     def __init__(self, api_token):
         self.api_token = api_token
-        #self.api_version = "2022-06-28" # Breaks everything!
-        self.api_version = "2021-08-16"
+        self.api_version = "2022-06-28" # Breaks everything!
+        #self.api_version = "2021-08-16"
 
 
     @property
@@ -76,7 +76,7 @@ class Notion:
         return value_dict
 
 
-    def query_a_database(self, notion_db_id, return_dataframe=False, ignored_properties=None, ignored_properties_type=None, timeout=60):
+    def query_a_database(self, notion_db_id, data_dict=None, return_dataframe=False, ignored_properties=None, ignored_properties_type=None, timeout=60):
         """
         Gets a list of Pages contained in the database.
 
@@ -109,9 +109,12 @@ class Notion:
 
         url = f"https://api.notion.com/v1/databases/{notion_db_id}/query"
 
-        requests_data_dict = {
-            "page_size": 100
-        }
+        if data_dict is None:
+            requests_data_dict = {
+                "page_size": 100
+            }
+        else:
+            requests_data_dict = data_dict
 
         if ignored_properties_type is None:
             ignored_properties_type = []
@@ -125,6 +128,7 @@ class Notion:
 
         has_more = True
         while has_more:
+            #print(len(notion_page_dict_list))
             is_successful_request = False
             retry = 10
             while (is_successful_request==False) and (retry > 0):
