@@ -4,9 +4,12 @@ import os
 import pandas as pd
 import requests
 import urllib.request
+import time
+import warnings
 
 #PERSON_PROPERTY = "email"
 PERSON_PROPERTY = "id"
+SLEEP_ERROR_SEC = 1
 
 
 class Notion:
@@ -73,7 +76,7 @@ class Notion:
         return value_dict
 
 
-    def query_a_database(self, notion_db_id, return_dataframe=False, ignored_properties=None, ignored_properties_type=None):
+    def query_a_database(self, notion_db_id, return_dataframe=False, ignored_properties=None, ignored_properties_type=None, timeout=60):
         """
         Gets a list of Pages contained in the database.
 
@@ -122,34 +125,47 @@ class Notion:
 
         has_more = True
         while has_more:
-            resp = requests.post(url, headers=self.request_header, data=json.dumps(requests_data_dict))
+            is_successful_request = False
+            retry = 10
+            while (is_successful_request==False) and (retry > 0):
+                resp = requests.post(url, headers=self.request_header, data=json.dumps(requests_data_dict, default=str), timeout=timeout)
 
-            if resp.status_code != 200:
+                if resp.status_code == 200:
+                    is_successful_request = True
+                else:
+                    err_msg = f"{datetime.datetime.now().isoformat()} Error {resp.status_code} ({resp.reason}) on {url} ; wait {SLEEP_ERROR_SEC} seconds before the next retry ({retry} remaining retries)"
+                    warnings.warn(err_msg)
+                    with open("errors.log", "a") as fd:
+                        print(err_msg, file=fd)
+                    time.sleep(SLEEP_ERROR_SEC)
+                    retry -= 1
+
+            if is_successful_request:
+                for page in resp.json()['results']:
+                    page_dict = {
+                        'page_id': page['id'],
+                        'created_time': datetime.datetime.strptime(page['created_time'], r"%Y-%m-%dT%H:%M:%S.000Z"),
+                        'created_by': page['created_by']['id'],
+                        'last_edited_time': datetime.datetime.strptime(page['last_edited_time'], r"%Y-%m-%dT%H:%M:%S.000Z"),
+                        'last_edited_by': page['last_edited_by']['id']
+                    }
+
+                    for property, property_dict in page["properties"].items():
+                        if (property not in ignored_properties) and (property_dict["type"] not in ignored_properties_type):
+                            if property not in RESERVED_PROPERTY_NAMES:
+                                page_dict[property] = self.parse_database_property_object(property_dict)
+                            else:
+                                raise ValueError(f'Property name "{property}" is reserved... Please rename this property in Notion.')    # TODO: it suck... Improve it!
+
+                    notion_page_dict_list.append(page_dict)
+            else:
                 # https://developers.notion.com/reference/post-database-query#errors
                 msg = os.linesep.join([
-                        resp.reason,
-                        "; ".join([f"{k}: {v}" for k, v in resp.json().items()]),
-                        json.dumps(requests_data_dict)
+                        f"Error {resp.status_code} ({resp.reason}) on {url}",
+                        #"; ".join([f"{k}: {v}" for k, v in resp.json().items()]),
+                        json.dumps(requests_data_dict, default=str)
                     ])
                 raise Exception(msg)
-
-            for page in resp.json()['results']:
-                page_dict = {
-                    'page_id': page['id'],
-                    'created_time': datetime.datetime.strptime(page['created_time'], r"%Y-%m-%dT%H:%M:%S.000Z"),
-                    'created_by': page['created_by']['id'],
-                    'last_edited_time': datetime.datetime.strptime(page['last_edited_time'], r"%Y-%m-%dT%H:%M:%S.000Z"),
-                    'last_edited_by': page['last_edited_by']['id']
-                }
-
-                for property, property_dict in page["properties"].items():
-                    if (property not in ignored_properties) and (property_dict["type"] not in ignored_properties_type):
-                        if property not in RESERVED_PROPERTY_NAMES:
-                            page_dict[property] = self.parse_database_property_object(property_dict)
-                        else:
-                            raise ValueError(f'Property name "{property}" is reserved... Please rename this property in Notion.')    # TODO: it suck... Improve it!
-
-                notion_page_dict_list.append(page_dict)
 
             has_more = resp.json()['has_more']
 
@@ -374,7 +390,7 @@ class Notion:
     # MAKE PAGES ##############################################################
     ###########################################################################
 
-    def create_a_page(self, notion_db_id, properties, verbose=False):
+    def create_a_page(self, notion_db_id, properties, verbose=False, timeout=60):
         # https://developers.notion.com/reference/post-page
 
         data_dict = {
@@ -392,9 +408,22 @@ class Notion:
 
         url = f"https://api.notion.com/v1/pages"
 
-        resp = requests.post(url, headers=self.request_header, data=json.dumps(data_dict))
+        is_successful_request = False
+        retry = 10
+        while (is_successful_request==False) and (retry > 0):
+            resp = requests.post(url, headers=self.request_header, data=json.dumps(data_dict, default=str), timeout=timeout)
 
-        if resp.status_code != 200:
+            if resp.status_code == 200:
+                is_successful_request = True
+            else:
+                err_msg = f"{datetime.datetime.now().isoformat()} Error {resp.status_code} ({resp.reason}) on {url} ; wait {SLEEP_ERROR_SEC} seconds before the next retry ({retry} remaining retries)"
+                warnings.warn(err_msg)
+                with open("errors.log", "a") as fd:
+                    print(err_msg, file=fd)
+                time.sleep(SLEEP_ERROR_SEC)
+                retry -= 1
+
+        if not is_successful_request:
             # C.f. https://developers.notion.com/reference/post-page#errors
             if resp.status_code == 404:
                 raise Exception("The specified parent database or page does not exist, or if the integration does not have access to the parent")
@@ -402,12 +431,12 @@ class Notion:
                 msg = os.linesep.join([
                     resp.reason,
                     "; ".join([f"{k}: {v}" for k, v in resp.json().items()]),
-                    json.dumps(data_dict)
+                    json.dumps(data_dict, default=str)
                 ])
                 raise Exception(msg)
 
         if verbose:
-            print(json.dumps(resp.json(), sort_keys=False, indent=4))
+            print(json.dumps(resp.json(), default=str, sort_keys=False, indent=4))
         
         return resp.json()
 
@@ -427,14 +456,27 @@ class Notion:
 
         url = f"https://api.notion.com/v1/pages/{notion_page_id}"
 
-        resp = requests.patch(url, headers=self.request_header, data=json.dumps(data_dict))
+        is_successful_request = False
+        retry = 10
+        while (is_successful_request==False) and (retry > 0):
+            resp = requests.patch(url, headers=self.request_header, data=json.dumps(data_dict, default=str))
 
-        if resp.status_code != 200:
+            if resp.status_code == 200:
+                is_successful_request = True
+            else:
+                err_msg = f"{datetime.datetime.now().isoformat()} Error {resp.status_code} ({resp.reason}) on {url} ; wait {SLEEP_ERROR_SEC} seconds before the next retry ({retry} remaining retries)"
+                warnings.warn(err_msg)
+                with open("errors.log", "a") as fd:
+                    print(err_msg, file=fd)
+                time.sleep(SLEEP_ERROR_SEC)
+                retry -= 1
+
+        if not is_successful_request:
             # https://developers.notion.com/reference/patch-page#errors
             msg = os.linesep.join([
                     resp.reason,
                     "; ".join([f"{k}: {v}" for k, v in resp.json().items()]),
-                    json.dumps(data_dict)
+                    json.dumps(data_dict, default=str)
                 ])
             raise Exception(msg)
 
