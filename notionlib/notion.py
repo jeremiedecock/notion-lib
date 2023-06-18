@@ -76,6 +76,48 @@ class Notion:
         return value_dict
 
 
+    def get_properties_name_and_type(self, notion_db_id, timeout=60):
+
+        url = f"https://api.notion.com/v1/databases/{notion_db_id}/query"
+
+        requests_data_dict = {
+            "page_size": 1
+        }
+
+        is_successful_request = False
+        retry = 10
+        while (is_successful_request==False) and (retry > 0):
+            resp = requests.post(url, headers=self.request_header, data=json.dumps(requests_data_dict, default=str), timeout=timeout)
+
+            if resp.status_code == 200:
+                is_successful_request = True
+            else:
+                err_msg = f"{datetime.datetime.now().isoformat()} Error {resp.status_code} ({resp.reason}) on {url} ; wait {SLEEP_ERROR_SEC} seconds before the next retry ({retry} remaining retries)"
+                warnings.warn(err_msg)
+                with open("errors.log", "a") as fd:
+                    print(err_msg, file=fd)
+                time.sleep(SLEEP_ERROR_SEC)
+                retry -= 1
+
+        if is_successful_request:
+            properties_dict = {}
+
+            page = resp.json()['results'][0]
+
+            for property, property_dict in page["properties"].items():
+                properties_dict[property] = property_dict["type"]
+
+            return properties_dict
+        else:
+            # https://developers.notion.com/reference/post-database-query#errors
+            msg = os.linesep.join([
+                    f"Error {resp.status_code} ({resp.reason}) on {url}",
+                    #"; ".join([f"{k}: {v}" for k, v in resp.json().items()]),
+                    json.dumps(requests_data_dict, default=str)
+                ])
+            raise Exception(msg)
+
+
     def query_a_database(self, notion_db_id, data_dict=None, return_dataframe=False, ignored_properties=None, ignored_properties_type=None, timeout=60):
         """
         Gets a list of Pages contained in the database.
