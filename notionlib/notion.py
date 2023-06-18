@@ -103,7 +103,7 @@ class Notion:
         ValueError
             _description_
         """        
-        RESERVED_PROPERTY_NAMES = ("created_by", "created_time", "last_edited_by", "last_edited_time", "page_id")
+        RESERVED_PROPERTY_NAMES = ("created_by", "created_time", "last_edited_by", "last_edited_time", "page_id", "url")
 
         notion_page_dict_list = []
 
@@ -148,6 +148,7 @@ class Notion:
                 for page in resp.json()['results']:
                     page_dict = {
                         'page_id': page['id'],
+                        'page_url': page['url'],
                         'created_time': datetime.datetime.strptime(page['created_time'], r"%Y-%m-%dT%H:%M:%S.000Z"),
                         'created_by': page['created_by']['id'],
                         'last_edited_time': datetime.datetime.strptime(page['last_edited_time'], r"%Y-%m-%dT%H:%M:%S.000Z"),
