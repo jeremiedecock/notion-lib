@@ -9,6 +9,7 @@ import warnings
 
 #PERSON_PROPERTY = "email"
 PERSON_PROPERTY = "id"
+#PERSON_PROPERTY = "name"
 SLEEP_ERROR_SEC = 1
 
 
@@ -406,6 +407,14 @@ class Notion:
         elif property_dict["type"] == "url":
             # https://developers.notion.com/reference/property-item-object#url-property-values
             value =  property_dict["url"]
+
+        elif property_dict["type"] == "last_edited_by":
+            # https://developers.notion.com/reference/property-item-object#url-property-values
+            value = property_dict["last_edited_by"]["id"]
+            #if "person" in property_dict["last_edited_by"]:
+            #    value = property_dict["last_edited_by"]["person"]["email"]    # TODO : use ID instead !!!
+            #else:
+            #    value = None
 
         elif property_dict["type"] == "last_edited_time":
             # https://developers.notion.com/reference/property-item-object#url-property-values
